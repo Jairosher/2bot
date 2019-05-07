@@ -1,8 +1,8 @@
 {
-  "name": "messenger-webhook",
+  "name": "chatbot_anyhelpec",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "HEROKU FACEBOOK MESSENGER",
+  "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
