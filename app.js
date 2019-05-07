@@ -7,11 +7,11 @@ var app = express();
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 // configurar el puerto y el mensaje en caso de exito
-app.listen((process.env.PORT || 5000), () => console.log('El servidor webhook esta escuhando!'));
+app.listen((process.env.PORT || 5000), () => console.log('El servidor webhook esta escuchando!'));
 
 // Ruta de la pagina index
 app.get("/", function (req, res) {
-    res.send("Se ha desplegado de manera exitosa el CMaquera ChatBot :D!!!");
+    res.send("Se ha desplegado de manera exitosa el anyhelpec ChatBot :D!!!");
 });
 
 // Facebook Webhook
