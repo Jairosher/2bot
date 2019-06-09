@@ -1,9 +1,27 @@
 // Importar las dependencias para configurar el servidor
 var express = require("express");
-var request = require("request");
 var bodyParser = require("body-parser");
-
+var request = require("request");
+var config= require("./config");
 var app = express();
+
+var five = require("johnny-five");
+var board = new five.Board();
+var ventilador=13;
+var foco=12;
+
+
+board.on("ready", function() {
+
+var ventilador= new five.Led(ventilador);
+	ventilador.off();
+
+var foco=new five.Led(foco);
+    foco.off();
+
+});
+
+
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 // configurar el puerto y el mensaje en caso de exito
@@ -32,14 +50,17 @@ app.get("/webhook", function (req, res) {
 
 // Todos eventos de mesenger sera apturados por esta ruta
 app.post("/webhook", function (req, res) {
-    // Verificar si el vento proviene del pagina asociada
-    if (req.body.object == "page") {
-        // Si existe multiples entradas entraas
-        req.body.entry.forEach(function(entry) {
-            // Iterara todos lo eventos capturados
-            entry.messaging.forEach(function(event) {
-                if (event.message) {
-                    process_event(event);
+   var data= req.body;
+
+	if(data.object=='page'){
+
+		data.entry.forEach(function(dataEntry){
+
+			dataEntry.messaging.forEach(function(messageEvent){
+
+				if(messageEvent.message){
+
+					recivedMessage(messageEvent);
                 }
             });
         });
@@ -48,45 +69,180 @@ app.post("/webhook", function (req, res) {
 });
 
 
-// Funcion donde se procesara el evento
-function process_event(event){
-    // Capturamos los datos del que genera el evento y el mensaje 
-    var senderID = event.sender.id;
-    var message = event.message;
-    
-    // Si en el evento existe un mensaje de tipo texto
-    if(message.text){
-        // Crear un payload para un simple mensaje de texto
-        var response = {
-            "text": 'Enviaste este mensaje: ' + message.text
-        }
-    }
-    
-    // Enviamos el mensaje mediante SendAPI
-    enviar_texto(senderID, response);
+function recivedMessage(event){
+
+
+	var sender= event.sender.id;
+	var text=event.message.text;
+
+	evaluateMessage(sender,text);
+
 }
 
-// Funcion donde el chat respondera usando SendAPI
-function enviar_texto(senderID, response){
-    // Construcicon del cuerpo del mensaje
-    let request_body = {
-        "recipient": {
-          "id": senderID
-        },
-        "message": response
-    }
-    
-    // Enviar el requisito HTTP a la plataforma de messenger
-    request({
-        "uri": "https://graph.facebook.com/v2.6/me/messages",
-        "qs": { "access_token": process.env.PAGE_ACCESS_TOKEN },
-        "method": "POST",
-        "json": request_body
-    }, (err, res, body) => {
-        if (!err) {
-          console.log('Mensaje enviado!')
-        } else {
-          console.error("No se puedo enviar el mensaje:" + err);
-        }
-    }); 
+function evaluateMessage(recipientId,message){
+	var finalMessage="";
+
+	if (isContain(message,'prender ventilador') || isContain(message,'Prender Ventilador')  ){
+
+		VentiladorON(recipientId);
+
+	}else if (isContain(message,'apagar ventilador') || isContain(message,'Apagar Ventilador')  ){
+
+		VentiladorOFF(recipientId);
+
+	}else if (isContain(message,'prender foco')|| isContain(message,'Prender Foco')){
+
+		focoON(recipientId);
+	}else if (isContain(message,'apagar foco')|| isContain(message,'Apagar Foco')){
+		focoOFF(recipientId);
+	}
+	else{
+
+		finalMessage="Lo siento, no entendi lo que quieres decir";
+	}
+
+	sendMessage(recipientId,finalMessage);
+
+
+
+}
+
+function isContain(sentece,word){
+
+	return sentece.indexOf(word) > -1 
+
+}
+
+function sendMessage(recipientId,message){
+
+	var MessageData={
+
+			recipient:{
+				id:recipientId
+			},
+			message:{
+				text:message
+			}
+
+
+	}
+
+	sendCallAPI(MessageData);
+}
+
+function sendCallAPI(MessageData){
+
+	request({
+
+		uri:config.URI,
+		qs:{access_token:config.APP_TOKEN },
+		method:'POST',
+		json:MessageData
+
+	},function(error,response,data){
+
+		if(error){
+			console.log("Error al enviar el mensaje");
+
+		}else{
+
+			console.log("Envio exitoso");
+
+		}
+
+	});
+}
+
+
+
+function VentiladorON(recipientId){
+
+  	ventilador.on();
+
+  	var finalMessage="Ventilador Encendido";
+	var MessageData={
+
+			recipient:{
+				id:recipientId
+			},
+			message:{
+				text:finalMessage
+			}
+
+	}
+
+	sendCallAPI(MessageData);
+
+}
+
+
+function VentiladorOFF(recipientId){
+
+	ventilador.off();
+
+  	var finalMessage="Ventilador Apagado";
+
+
+	var MessageData={
+
+			recipient:{
+				id:recipientId
+			},
+			message:{
+				text:finalMessage
+			}
+
+
+	}
+
+	sendCallAPI(MessageData);
+
+}
+
+function focoON(recipientId){
+
+
+	foco.on();
+
+  	var finalMessage="Foco Prendido";
+
+
+	var MessageData={
+
+			recipient:{
+				id:recipientId
+			},
+			message:{
+				text:finalMessage
+			}
+
+
+	}
+
+	sendCallAPI(MessageData);
+
+}
+
+function focoOFF(recipientId){
+
+
+	foco.off();
+
+  	var finalMessage="Foco Apagado";
+
+
+	var MessageData={
+
+			recipient:{
+				id:recipientId
+			},
+			message:{
+				text:finalMessage
+			}
+
+
+	}
+
+	sendCallAPI(MessageData);
+
 }
